@@ -12,6 +12,9 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"sync"
+	"math/rand"
+	"strconv"
 )
 
 type Page struct {
@@ -20,15 +23,38 @@ type Page struct {
 
 var templateDir string
 var logins *auth.AuthMap
+var avg float64
+var dev float64
+var max int
+var currentInflight int
+var mutex = &sync.Mutex{}
 
 // Handler to display the current time
 func HandleTime(w http.ResponseWriter, req *http.Request) {
+
+	// increment inflight requests
+	mutex.Lock()
+	if currentInflight > max {
+		w.WriteHeader(500)
+		log.Debug("Max inflight requests has been reach!")
+		mutex.Unlock()
+		return
+	} else {
+		currentInflight++
+		log.Debug("Increment inflight to " + strconv.Itoa(currentInflight))
+		mutex.Unlock()
+	}
+
+
 	t := time.Now()
 	ut := time.Now().UTC()
 	const layout = "3:04:05 PM"
 	const layout2 = "3:04:05 UTC"
 	timeNow := t.Format(layout)
 	timeNowUTC := ut.Format(layout2)
+
+	// simulate load for calculating time
+	load()
 
 	message := "The time is now <span class=\"time\">" + timeNow + "</span> (" + timeNowUTC + ")"
 
@@ -45,6 +71,12 @@ func HandleTime(w http.ResponseWriter, req *http.Request) {
 	c := template.HTML(message)
 	p := &Page{Body: c}
 	renderTemplate(w, p)
+
+	// decrement inflight requests count
+	mutex.Lock()
+	currentInflight--
+	mutex.Unlock()
+	log.Debug("Inflight requests decremented to " + strconv.Itoa(currentInflight))
 }
 
 // Handler to set status code to 404 and display custom message
@@ -142,6 +174,12 @@ func configureLogger(name string) {
 	}
 }
 
+// load simulator from lecture #8 notes
+func load() {
+	load := time.Duration(rand.NormFloat64()*dev + avg * 70)
+	time.Sleep(load)
+}
+
 // Launches a web server thats main purpose is to display the time
 // e.g. http://localhost:8080/time will display the messsage:
 //
@@ -155,8 +193,15 @@ func main() {
 	authHost := flag.String("authhost", "127.0.0.1", "hostname of authserver")
 	authPort := flag.String("authport", "8888", "port of authserver")
 	timeout := flag.Int("authtimeout-ms", 5, "auth server timeout")
+	average := flag.Int("avg-response-ms", 10000, "average response")
+	deviation := flag.Int("deviation-ms", 300, "deviation")
+	maximum := flag.Int("max-inflight", 1, "max inflight requests")
+
 	flag.Parse()
 	templateDir = *template
+	avg = float64(*average)
+	dev = float64(*deviation)
+	max = *maximum
 
 	// if flag set, display version then exit
 	if *version {
@@ -169,6 +214,7 @@ func main() {
 	logins = auth.New(*authHost+":"+*authPort, durationTimeout)
 
 	//configureLogger(*logFile)
+	currentInflight = 0
 
 	// start up the server
 	http.HandleFunc("/", HandleIndex)
