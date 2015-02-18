@@ -193,7 +193,7 @@ func main() {
 	authHost := flag.String("authhost", "127.0.0.1", "hostname of authserver")
 	authPort := flag.String("authport", "8888", "port of authserver")
 	timeout := flag.Int("authtimeout-ms", 5, "auth server timeout")
-	average := flag.Int("avg-response-ms", 10000, "average response")
+	average := flag.Int("avg-response-ms", 100000000, "average response")
 	deviation := flag.Int("deviation-ms", 300, "deviation")
 	maximum := flag.Int("max-inflight", 1, "max inflight requests")
 
