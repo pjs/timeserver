@@ -23,6 +23,8 @@ var dump *string
 var checkpoint *int
 var dumpFile string
 
+// returns the name associated with uuid
+// if the user is logged in
 func getHandler(w http.ResponseWriter, r *http.Request) {
 	uuid := r.FormValue("cookie")
 	log.Info("Received /get with uuid: " + uuid)
@@ -43,6 +45,8 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// sets the name with corresponding cookie
+// so the user is marked as being logged in
 func setHandler(w http.ResponseWriter, r *http.Request) {
 	cookie := r.FormValue("cookie")
 	name := r.FormValue("name")
@@ -59,6 +63,8 @@ func setHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// initialize the first read of the dump file if it exists
+// and then continue backing it up on the specified interval
 func dumpProcessing() {
 
 	// check if we need to load up the dump for the first time
@@ -70,9 +76,12 @@ func dumpProcessing() {
 	} else {
 		log.Info("Dump file does not exist.")
 	}
+
+	// keep backing it up!
 	go dumpIntervalChecking()
 }
 
+// will run in goroutine to backup and verify our map
 func dumpIntervalChecking() {
 	for {
 		time.Sleep(time.Duration(*checkpoint) * time.Second)
@@ -99,6 +108,8 @@ func dumpIntervalChecking() {
 	}
 }
 
+// compare map and the one in the dumpfile
+// to see if they are a match
 func verify(dataMap map[string]string) bool {
 	verifyMap := make(map[string]string)
 	read(verifyMap)
@@ -111,12 +122,14 @@ func verify(dataMap map[string]string) bool {
 	}
 }
 
+// read in json data from file to a map
 func read(dataMap map[string]string) {
 	dump, _ := ioutil.ReadFile(dumpFile)
 	dec := json.NewDecoder(bytes.NewReader(dump))
 	dec.Decode(&dataMap)
 }
 
+// write map encoded in json to file
 func write(dataMap map[string]string) {
 	data, err := json.Marshal(dataMap)
 
@@ -131,6 +144,7 @@ func write(dataMap map[string]string) {
 	}
 }
 
+// copy src file to destination
 func copyFile(src string, dest string) {
 	cmd := exec.Command("cp", src, dest)
 	err := cmd.Run()
@@ -139,6 +153,8 @@ func copyFile(src string, dest string) {
 	}
 }
 
+// authserver to use with the timeserver to manage
+// the state of our map -- scale it up!
 func main() {
 	port = flag.String("authport", "8888", "server port number")
 	dump = flag.String("dumpfile", "not specified", "login state dump")

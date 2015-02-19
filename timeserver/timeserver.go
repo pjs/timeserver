@@ -192,7 +192,7 @@ func main() {
 	port := flag.String("port", "8080", "server port number")
 	version := flag.Bool("V", false, "server version")
 	template := flag.String("templates", "../templates/", "templates directory")
-	//logFile := flag.String("log", "../etc/log.cfg", "log configuration file")
+	logFile := flag.String("log", "../etc/log.cfg", "log configuration file")
 	authHost := flag.String("authhost", "127.0.0.1", "hostname of authserver")
 	authPort := flag.String("authport", "8888", "port of authserver")
 	timeout := flag.Int("authtimeout-ms", 5, "auth server timeout")
@@ -216,7 +216,7 @@ func main() {
 
 	logins = auth.New(*authHost+":"+*authPort, durationTimeout)
 
-	//configureLogger(*logFile)
+	configureLogger(*logFile)
 	currentInflight = 0
 
 	// start up the server
