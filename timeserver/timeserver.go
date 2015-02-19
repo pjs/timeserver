@@ -15,6 +15,7 @@ import (
 	"sync"
 	"math/rand"
 	"strconv"
+	"runtime"
 )
 
 type Page struct {
@@ -34,7 +35,7 @@ func HandleTime(w http.ResponseWriter, req *http.Request) {
 
 	// increment inflight requests
 	mutex.Lock()
-	if currentInflight > max {
+	if currentInflight >= max {
 		w.WriteHeader(500)
 		log.Debug("Max inflight requests has been reach!")
 		mutex.Unlock()
@@ -44,6 +45,7 @@ func HandleTime(w http.ResponseWriter, req *http.Request) {
 		log.Debug("Increment inflight to " + strconv.Itoa(currentInflight))
 		mutex.Unlock()
 	}
+	runtime.Gosched()
 
 
 	t := time.Now()
@@ -76,6 +78,7 @@ func HandleTime(w http.ResponseWriter, req *http.Request) {
 	mutex.Lock()
 	currentInflight--
 	mutex.Unlock()
+	runtime.Gosched()
 	log.Debug("Inflight requests decremented to " + strconv.Itoa(currentInflight))
 }
 
@@ -176,7 +179,7 @@ func configureLogger(name string) {
 
 // load simulator from lecture #8 notes
 func load() {
-	load := time.Duration(rand.NormFloat64()*dev + avg * 70)
+	load := time.Duration(rand.NormFloat64()*dev + avg)
 	time.Sleep(load)
 }
 
@@ -193,14 +196,14 @@ func main() {
 	authHost := flag.String("authhost", "127.0.0.1", "hostname of authserver")
 	authPort := flag.String("authport", "8888", "port of authserver")
 	timeout := flag.Int("authtimeout-ms", 5, "auth server timeout")
-	average := flag.Int("avg-response-ms", 100000000, "average response")
-	deviation := flag.Int("deviation-ms", 300, "deviation")
+	average := flag.Int("avg-response-ms", 500, "average response")
+	deviation := flag.Int("deviation-ms", 20, "deviation")
 	maximum := flag.Int("max-inflight", 1, "max inflight requests")
 
 	flag.Parse()
 	templateDir = *template
-	avg = float64(*average)
-	dev = float64(*deviation)
+	avg = float64(*average * int(time.Millisecond))
+	dev = float64(*deviation * int(time.Millisecond))
 	max = *maximum
 
 	// if flag set, display version then exit

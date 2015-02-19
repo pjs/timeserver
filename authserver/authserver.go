@@ -141,14 +141,18 @@ func copyFile(src string, dest string) {
 
 func main() {
 	port = flag.String("authport", "8888", "server port number")
-	dump = flag.String("dumpfile", "auth.json", "login state dump")
+	dump = flag.String("dumpfile", "not specified", "login state dump")
 	checkpoint = flag.Int("checkpoint-interval", 5, "rate which to backup state")
 	flag.Parse()
 	dumpFile = *dump
 
 	m = cmap.New()
 
-	dumpProcessing()
+	// crude way of checking to see if the flag was present
+	// using default value in flag, if not, completely ignore dumpfile stuff
+	if dumpFile != "not specified" {
+		dumpProcessing()
+	}
 
 	http.HandleFunc("/get", getHandler)
 	http.HandleFunc("/set", setHandler)
